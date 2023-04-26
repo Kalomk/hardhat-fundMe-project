@@ -1,0 +1,41 @@
+{
+  "language": "Solidity",
+  "sources": {
+    "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol": {
+      "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\ninterface AggregatorV3Interface {\n  function decimals() external view returns (uint8);\n\n  function description() external view returns (string memory);\n\n  function version() external view returns (uint256);\n\n  function getRoundData(uint80 _roundId)\n    external\n    view\n    returns (\n      uint80 roundId,\n      int256 answer,\n      uint256 startedAt,\n      uint256 updatedAt,\n      uint80 answeredInRound\n    );\n\n  function latestRoundData()\n    external\n    view\n    returns (\n      uint80 roundId,\n      int256 answer,\n      uint256 startedAt,\n      uint256 updatedAt,\n      uint80 answeredInRound\n    );\n}\n"
+    },
+    "contracts/FundMe.sol": {
+      "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.9;\n\nimport \"@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol\";\nimport \"contracts/PriceConventer.sol\";\n\ncontract FundMe {\n\nusing PriceConventer for uint256;\naddress immutable public i_owner;\nAggregatorV3Interface public priceFeed;\n\nconstructor(address priceFeedAdress){\n    i_owner = msg.sender;\n    priceFeed = AggregatorV3Interface(priceFeedAdress);\n}\n\n\naddress[] public funders;\nmapping (address => uint256) public AdressToUsdAMount;\n\n    uint256 public constant minimumUsd = 50 * 1e18;\n\n    function fund() public payable {\n    require(msg.value.getEthAmount(priceFeed) >= minimumUsd,\"Error\");\n    funders.push(msg.sender);\n    AdressToUsdAMount[msg.sender] += msg.value;\n    }\n\n    function withdraw() public {\nfor(uint256 _fundIndex = 0; _fundIndex < funders.length; _fundIndex++){\naddress funder = funders[_fundIndex];\nAdressToUsdAMount[funder] = 0;\n}\nfunders = new address[](0);\n(bool callSuccess, ) = payable (msg.sender).call{value:address(this).balance}(\"\");\nrequire(callSuccess,\"Withdrdaw dosent exist\");\n    }\n   modifier onlyOwner{\nrequire(msg.sender == i_owner,\"Sender is not owner\");\n_;\n   }\n   receive() external  payable {\n       fund();\n   }\n   fallback() external  payable {\n       fund();\n   }\n}"
+    },
+    "contracts/PriceConventer.sol": {
+      "content": "// SPDX-License-Identifier: MIT\n\npragma solidity ^0.8.18;\n\nimport \"@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol\";\n\nlibrary PriceConventer{\n     function getPrice(AggregatorV3Interface priceFeed) public view  returns(uint256){\n(,int256 price,,,) = priceFeed.latestRoundData();\nreturn uint256(price * 1e10);\n    }\n    function getEthAmount(uint256 ethAmount,AggregatorV3Interface priceFeed) internal  view returns(uint256) {\n uint256 price = getPrice(priceFeed);\n return (ethAmount * price) / 1e18;\n    }\n}"
+    }
+  },
+  "settings": {
+    "optimizer": {
+      "enabled": false,
+      "runs": 200
+    },
+    "outputSelection": {
+      "*": {
+        "*": [
+          "abi",
+          "evm.bytecode",
+          "evm.deployedBytecode",
+          "evm.methodIdentifiers",
+          "metadata",
+          "devdoc",
+          "userdoc",
+          "storageLayout",
+          "evm.gasEstimates"
+        ],
+        "": [
+          "ast"
+        ]
+      }
+    },
+    "metadata": {
+      "useLiteralContent": true
+    }
+  }
+}

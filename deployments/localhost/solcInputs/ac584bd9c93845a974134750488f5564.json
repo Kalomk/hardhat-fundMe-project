@@ -1,0 +1,44 @@
+{
+  "language": "Solidity",
+  "sources": {
+    "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol": {
+      "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\ninterface AggregatorV3Interface {\n  function decimals() external view returns (uint8);\n\n  function description() external view returns (string memory);\n\n  function version() external view returns (uint256);\n\n  function getRoundData(uint80 _roundId)\n    external\n    view\n    returns (\n      uint80 roundId,\n      int256 answer,\n      uint256 startedAt,\n      uint256 updatedAt,\n      uint80 answeredInRound\n    );\n\n  function latestRoundData()\n    external\n    view\n    returns (\n      uint80 roundId,\n      int256 answer,\n      uint256 startedAt,\n      uint256 updatedAt,\n      uint80 answeredInRound\n    );\n}\n"
+    },
+    "contracts/FundMe.sol": {
+      "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.9;\n\nimport \"@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol\";\nimport \"contracts/PriceConventer.sol\";\n\nerror FundMe__NotOwner();\n\ncontract FundMe {\n\nusing PriceConventer for uint256;\n\n\nconstructor(address priceFeedAdress){\n    i_owner = msg.sender;\n    priceFeed = AggregatorV3Interface(priceFeedAdress);\n}\n\naddress immutable public i_owner;\nAggregatorV3Interface public priceFeed;\naddress[] public funders;\nmapping (address => uint256) public AdressToUsdAMount;\nuint256 public constant minimumUsd = 50 * 1e18;\n\n    function fund() public payable {\nrequire(msg.value.getEthAmount(priceFeed) >= minimumUsd,\"You need to spend more ETH\");\nfunders.push(msg.sender);\nAdressToUsdAMount[msg.sender] += msg.value;\n    }\n\n    function withdraw() public onlyOwner {\nfor(uint256 _fundIndex = 0; _fundIndex < funders.length; _fundIndex++){\naddress funder = funders[_fundIndex];\nAdressToUsdAMount[funder] = 0;\n}\nfunders = new address[](0);\n(bool callSuccess, ) = payable (msg.sender).call{value:address(this).balance}(\"\");\nrequire(callSuccess,\"Withdrdaw dosent exist\");\n    }\n\n\n   modifier onlyOwner{\nif(msg.sender != i_owner){\n    revert FundMe__NotOwner();\n}\n_;\n   }\n//    receive() external  payable {\n//        fund();\n//    }\n//    fallback() external  payable {\n//        fund();\n//    }\n}"
+    },
+    "contracts/FunWithStorage.sol": {
+      "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.7;\n\ncontract FunWithStorage {\n    uint256 favoriteNumber; // Stored at slot 0\n    bool someBool; // Stored at slot 1\n    uint256[] myArray; /* Array Length Stored at slot 2,\n    but the objects will be the keccak256(2), since 2 is the storage slot of the array */\n    mapping(uint256 => bool) myMap; /* An empty slot is held at slot 3\n    and the elements will be stored at keccak256(h(k) . p)\n    p: The storage slot (aka, 3)\n    k: The key in hex\n    h: Some function based on the type. For uint256, it just pads the hex\n    */\n    uint256 constant NOT_IN_STORAGE = 123;\n    uint256 immutable i_not_in_storage;\n\n    constructor() {\n        favoriteNumber = 25; // See stored spot above // SSTORE\n        someBool = true; // See stored spot above // SSTORE\n        myArray.push(222); // SSTORE\n        myMap[1] = true; // SSTORE\n        i_not_in_storage = 123;\n    }\n\n    function doStuff() public {\n        uint256 newVar = favoriteNumber + 1; // SLOAD\n        bool otherVar = someBool; // SLOAD\n        // ^^ memory variables\n    }\n}"
+    },
+    "contracts/PriceConventer.sol": {
+      "content": "// SPDX-License-Identifier: MIT\n\npragma solidity ^0.8.18;\n\nimport \"@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol\";\n\nlibrary PriceConventer{\n     function getPrice(AggregatorV3Interface priceFeed) public view  returns(uint256){\n(,int256 price,,,) = priceFeed.latestRoundData();\nreturn uint256(price * 1e10);\n    }\n    function getEthAmount(uint256 ethAmount,AggregatorV3Interface priceFeed) internal  view returns(uint256) {\n uint256 price = getPrice(priceFeed);\n return (ethAmount * price) / 1e18;\n    }\n}"
+    }
+  },
+  "settings": {
+    "optimizer": {
+      "enabled": false,
+      "runs": 200
+    },
+    "outputSelection": {
+      "*": {
+        "*": [
+          "abi",
+          "evm.bytecode",
+          "evm.deployedBytecode",
+          "evm.methodIdentifiers",
+          "metadata",
+          "devdoc",
+          "userdoc",
+          "storageLayout",
+          "evm.gasEstimates"
+        ],
+        "": [
+          "ast"
+        ]
+      }
+    },
+    "metadata": {
+      "useLiteralContent": true
+    }
+  }
+}
