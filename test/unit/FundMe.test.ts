@@ -1,12 +1,23 @@
-const {deployments,ethers,getNamedAccounts} = require('hardhat')
-const {assert,expect} = require('chai')
-
+import {deployments,ethers,getNamedAccounts} from 'hardhat'
+import {assert,expect} from 'chai'
+import { FundMe, MockV3Aggregator } from '../../typechain-types';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
+import { developmentChains } from '../../helper-hardhat-config';
+import { network } from "hardhat"
 
 describe('FundMe', async function (){
-    let FundMe,deployer,MockV3Aggregator;
+    let FundMe: FundMe;
+    let deployer: SignerWithAddress;
+    let MockV3Aggregator: MockV3Aggregator;
+
+    if (!developmentChains.includes(network.name)) {
+        throw 'You need to be on a development chain to run tests';
+      }
+
     const sendValue = ethers.utils.parseEther('1')
     beforeEach(async function () {
-        deployer = (await getNamedAccounts()).deployer
+        const accounts = await ethers.getSigners();
+        deployer = accounts[0];
         await deployments.fixture(['all'])
         FundMe = await ethers.getContract('FundMe',deployer)
         MockV3Aggregator = await ethers.getContract('MockV3Aggregator',deployer)
@@ -25,15 +36,16 @@ describe('FundMe', async function (){
         })
         it('updated amount funded data structure',async () =>{
             await FundMe.fund({value:sendValue})
-            const response = await FundMe.getAdressToUsdAMount(deployer)
+            const response = await FundMe.getAdressToUsdAMount(deployer.address)
             assert.equal(response.toString(),sendValue.toString())
         })
         it('add funder to array getFunders',async () =>{
             await FundMe.fund({value:sendValue})
             const funder = await FundMe.getFunders(0)
-            assert.equal(funder,deployer)
+            assert.equal(funder,deployer.address)
         })
     })
+
 
     describe('withdraw', async () =>{
         beforeEach(async () =>{
@@ -44,7 +56,7 @@ describe('FundMe', async function (){
                 FundMe.address
             )
             const startingDeployerBalance = await FundMe.provider.getBalance(
-                deployer
+                deployer.address
             )
 
             const transactionResponse = await FundMe.withdraw()
@@ -58,10 +70,10 @@ describe('FundMe', async function (){
                 FundMe.address
             )
             const endingDeployerBalance = await FundMe.provider.getBalance(
-                deployer
+                deployer.address
             )
 
-            assert.equal(endingFundMeBalance,0)
+            assert.equal(endingFundMeBalance.toString(),'0')
             assert.equal(startingFundMeBalance.add(startingDeployerBalance).toString(),endingDeployerBalance.add(gasCost).toString())
          })
 
@@ -80,7 +92,7 @@ describe('FundMe', async function (){
                 FundMe.address
             )
             const startingDeployerBalance = await FundMe.provider.getBalance(
-                deployer
+                deployer.address
             )
 
             const transactionResponse = await FundMe.withdraw()
@@ -94,16 +106,16 @@ describe('FundMe', async function (){
                 FundMe.address
             )
             const endingDeployerBalance = await FundMe.provider.getBalance(
-                deployer
+                deployer.address
             )
 
-            assert.equal(endingFundMeBalance,0)
+            assert.equal(endingFundMeBalance.toString(),'0')
             assert.equal(startingFundMeBalance.add(startingDeployerBalance).toString(),endingDeployerBalance.add(gasCost).toString())
 
             await expect(FundMe.getFunders(0)).to.be.reverted
 
             for(let i=0; i < 6; i++){
-                 assert.equal(await FundMe.getAdressToUsdAMount(accounts[i].address),0)
+                 assert.equal((await FundMe.getAdressToUsdAMount(accounts[i].address)).toString(),'0')
             }
          })
          

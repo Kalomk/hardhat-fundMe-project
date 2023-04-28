@@ -1,12 +1,15 @@
 const {ethers,getNamedAccounts} = require('hardhat')
 const {assert} = require('chai')
-import {developmentChains } from "../helper-hardhat-config"
+import { developmentChains } from '../../helper-hardhat-config';
 import { network } from "hardhat"
+import { FundMe, MockV3Aggregator } from '../../typechain-types';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 developmentChains.includes(network.name)?
 describe.skip:
 describe('FundMe', async function (){
-    let FundMe,deployer,MockV3Aggregator;
+    let FundMe: FundMe;
+  let deployer: SignerWithAddress;
     const sendValue = ethers.utils.parseEther('1')
     beforeEach(async function () {
         deployer = (await getNamedAccounts()).deployer
